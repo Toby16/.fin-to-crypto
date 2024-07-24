@@ -3,6 +3,9 @@ from fastapi import status, Depends, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 from dropbox.files import WriteMode
 from dropbox import Dropbox, exceptions
+from dropbox.exceptions import ApiError
+
+import dropbox
 
 import os
 
@@ -19,19 +22,19 @@ def index():
 
 @app.post("/file_upload", status_code=status.HTTP_200_OK, tags=["File"])
 @app.post("/file_upload/", status_code=status.HTTP_200_OK, tags=["File"])
-def upload_file(file: UploadFile = File(...)):
+async def upload_file(file: UploadFile = File(...)):
     """
     Endpoint to only accept .fin files
     ... and upload to dropox.
     """
-    """
+
     # Validate .fin file extension
     if not file.filename.endswith(".fin"):
         raise HTTPException(status_code=400, detail="Only .fin files are allowed")
-    """
+
 
     # Initialize Dropbox client
-    dropbox_client = Dropbox(DROPBOX_API_TOKEN)
+    dropbox_client = dropbox.Dropbox(DROPBOX_API_TOKEN)
     """
     # Save the file to a temporary location
     temp_file_path = f"/tmp/{file.filename}"
@@ -43,7 +46,7 @@ def upload_file(file: UploadFile = File(...)):
 
     try:
         # Read the file contents
-        file_contents = file.read()
+        file_contents = await file.read()
 
         # Define the Dropbox path
         dropbox_path = f'/{file.filename}'
