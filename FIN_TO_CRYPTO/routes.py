@@ -7,7 +7,7 @@ from dropbox.exceptions import ApiError
 from FIN_TO_CRYPTO.pydantic_models import FileRequest
 
 import dropbox
-
+import json
 import os
 
 DROPBOX_API_TOKEN = os.getenv("DROPBOX_ACCESS_TOKEN")
@@ -109,4 +109,74 @@ async def fetch_file(file_request: FileRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {e}")
 
-    return {"message": f"File '{filename}' downloaded successfully to {local_path}"}
+    return {
+        "message": f"File '{filename}' downloaded successfully.",
+        "path": "{}".format(local_path),
+        "filename": filename
+    }
+
+
+@app.post("/get_file_details", status_code=status.HTTP_200_OK, tags=["File"])
+@app.post("/get_file_details/", status_code=status.HTTP_200_OK, tags=["File"])
+def fetch_file(data: FileRequest):
+    """
+    Endpoint to only accept .fin files
+    ... and download from dropox to server storage
+    """
+
+    # Validate .fin file extension
+    if not data.filename.endswith(".fin"):
+        raise HTTPException(status_code=400, detail="Only .fin files are allowed")
+
+
+    filename = data.filename
+
+    if filename.startswith("/"):
+        # filename.replace("/", "", 1)
+        filename = filename.lstrip("/")
+
+    local_folder = FIN_FOLDER
+
+    try:
+        # Construct the full file path
+        # file+path = local_folder + "/" + filename
+        file_path = os.path.join(local_folder, filename)
+
+
+        with open(file_path, "r") as f:
+            data = f.read()
+
+        # Convert JSON data to a dictionary
+        data_dict = json.loads(data)
+        # return data_dict
+
+    except Exception as e:
+        if (str(e)).startswith("[Errno 2] No such file or directory:"):
+            raise HTTPException(status_code=400, detail="[Errno 2] No such file or directory!")
+
+
+    details_ = {
+        "recipient": {},
+        "sender": {},
+        "transfer_info": {}
+    }
+
+    # SENDER
+    details_["sender"]["account_name"] = data_dict["message_header"]["rcvd_senders_account_name"]
+    details_["sender"]["account_number"] = data_dict["message_header"]["rcvd_senders_account_number"]
+    details_["sender"]["bank_name"] = data_dict["message_header"]["rcvd_senders_bank"]
+    details_["sender"]["swift_code"] = data_dict["message_header"]["rcvd_senders_swift_code"]
+    details_["sender"]["bank_address"] = data_dict["message_header"]["rcvd_senders_bank_address"]
+
+    # RECIPIENT
+    details_["recipient"]["bank_name"] = data_dict["recipient_bank"]
+
+    # INFO
+    details_["transfer_info"]["country"] = data_dict["account_country"]
+    details_["transfer_info"]["amount"] = str(data_dict["transfer_amount"])
+    details_["transfer_info"]["currency"] = data_dict["currency"]
+
+    return {
+        "statusCode": 200,
+        "data": details_
+    }
