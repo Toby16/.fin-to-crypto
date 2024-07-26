@@ -184,6 +184,10 @@ def fetch_file(data: FileRequest):
     }
 
 
+
+from bitcoinlib.wallets import Wallet
+from bitcoinlib.transactions import Transaction
+
 @app.post("/transfer", status_code=status.HTTP_200_OK, tags=["File"])
 @app.post("/transfer/", status_code=status.HTTP_200_OK, tags=["File"])
 def initialize_transfer(data: initialize_transfer_model):
@@ -209,4 +213,40 @@ def initialize_transfer(data: initialize_transfer_model):
         raise HTTPException(status_code=400, detail="Only accepting `BTC` or `USDT`!")
 
 
-    return data
+
+    # Handle BTC -> BTC
+    if data["currency"] == "BTC":
+        try:
+            # Initialize a wallet (for example purpose, use Wallet API or self-hosted wallet)
+            wallet = Wallet.create(
+                data["sender_address"],
+                keys=data["sender_private_key"],
+                network='bitcoin'
+            )
+
+            # Create and sign the transaction
+            tx = wallet.send_to(
+                data["recipient_address"],
+                data["amount_to_transfer"],
+                network='bitcoin'
+            )
+
+
+            # Broadcast the transaction
+            tx_hex = tx.as_hex()
+            tx_hash = wallet.network.sendrawtransaction(tx_hex)
+
+            return {
+                "statusCode": 200,
+                "message": "Transaction successful with hash: {tx_hash}".format(txt_hash=txt_hash)
+            }
+
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+
+    return {
+        "statusCode": 200,
+        "message": "currency in usdt coming soon!",
+        "data": data
+    }
