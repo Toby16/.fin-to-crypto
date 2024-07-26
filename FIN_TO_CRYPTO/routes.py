@@ -4,7 +4,9 @@ from fastapi.responses import JSONResponse
 from dropbox.files import WriteMode
 from dropbox import Dropbox, exceptions
 from dropbox.exceptions import ApiError
-from FIN_TO_CRYPTO.pydantic_models import FileRequest
+from FIN_TO_CRYPTO.pydantic_models import (
+    FileRequest, initialize_transfer_model
+)
 
 import dropbox
 import json
@@ -180,3 +182,31 @@ def fetch_file(data: FileRequest):
         "statusCode": 200,
         "data": details_
     }
+
+
+@app.post("/transfer", status_code=status.HTTP_200_OK, tags=["File"])
+@app.post("/transfer/", status_code=status.HTTP_200_OK, tags=["File"])
+def initialize_transfer(data: initialize_transfer_model):
+    data = data.dict()
+
+    # explicitly validate user input
+    if data["sender_address"] is None:
+        raise HTTPException(status_code=400, detail="Sender Address Not Found! Example: 0xYourSenderAddress")
+
+    if data["sender_private_key"] is None:
+        raise HTTPException(status_code=400, detail="Sender Private Key Noe Found! Example: [ hidden ]")
+
+    if data["recipient_address"] is None:
+        raise HTTPException(status_code=400, detail="Recipient Address Not Found! Example: 0xRecipientAddress")
+
+    if data["amount_to_transfer"] is None:
+        raise HTTPException(status_code=400, detail="Kindly input amount to transfer from {x} to {y}".format(x=data["sender_address"], y=data["recipient_address"]))
+
+    if data["currency"] is None:
+        # defaults to BTC
+        data["currency"] = "BTC"
+    elif data["currency"] not in ["BTC", "USDT"]:
+        raise HTTPException(status_code=400, detail="Only accepting `BTC` or `USDT`!")
+
+
+    return data
