@@ -184,9 +184,12 @@ def fetch_file(data: FileRequest):
     }
 
 
-
+# Handling Bitcoin (BTC) Transfers
 from bitcoinlib.wallets import Wallet
 from bitcoinlib.transactions import Transaction
+
+# Handling USDT (on Ethereum) Transfers to Bitcoin
+from web3 import Web3
 
 @app.post("/transfer", status_code=status.HTTP_200_OK, tags=["File"])
 @app.post("/transfer/", status_code=status.HTTP_200_OK, tags=["File"])
@@ -243,10 +246,15 @@ def initialize_transfer(data: initialize_transfer_model):
 
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
+    elif data["currency"] == "USDT":
+        try:
+            pass
+
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
 
     return {
         "statusCode": 200,
-        "message": "currency in usdt coming soon!",
-        "data": data
+        "message": "success!"
     }
